@@ -19,6 +19,17 @@ logger = logging.getLogger(__name__)
 
 SCRAPE_INTERVAL_HOURS = float(os.getenv("SCRAPE_INTERVAL_HOURS", "6"))
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://tunevexa-dev.vercel.app",
+    "https://dev.tunevexa.com",
+]
+_extra = os.getenv("EXTRA_ORIGINS", "")
+if _extra:
+    ALLOWED_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
+logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+
 
 async def run_scrape_pipeline() -> int:
     logger.info("Starting scrape pipeline...")
@@ -58,8 +69,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="TuneVexa API", version="1.0.0", lifespan=lifespan)
-
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 
 app.add_middleware(
     CORSMiddleware,
