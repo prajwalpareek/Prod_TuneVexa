@@ -5,12 +5,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from scraper import scrape_top_200
 from spotify_api import enrich_with_cover_art
-from supabase_client import fetch_songs, save_songs
+from supabase_client import fetch_available_dates, fetch_songs, save_songs
 
 load_dotenv()
 
@@ -82,13 +82,23 @@ app.add_middleware(
 
 
 @app.get("/songs")
-async def get_songs():
+async def get_songs(date: str | None = Query(default=None)):
     try:
-        songs = await fetch_songs()
+        songs = await fetch_songs(chart_date=date)
         return {"data": songs, "count": len(songs)}
     except Exception as e:
         logger.error(f"Failed to fetch songs: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch songs from database")
+
+
+@app.get("/dates")
+async def get_dates():
+    try:
+        dates = await fetch_available_dates()
+        return {"dates": dates}
+    except Exception as e:
+        logger.error(f"Failed to fetch dates: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch available dates")
 
 
 @app.post("/scrape")

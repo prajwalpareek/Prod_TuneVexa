@@ -58,6 +58,8 @@ export default function SpotifyTopSongs() {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -70,11 +72,30 @@ export default function SpotifyTopSongs() {
   }, []);
 
   useEffect(() => {
+    const fetchDates = async () => {
+      try {
+        const res = await fetch(`${API_URL}/dates`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const dates = json.dates || [];
+        setAvailableDates(dates);
+        if (dates.length > 0) setSelectedDate(dates[0]);
+      } catch (_) {
+        // non-fatal — dates dropdown just won't populate
+      }
+    };
+    fetchDates();
+  }, []);
+
+  useEffect(() => {
     const fetchSongs = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`${API_URL}/songs`);
+        const url = selectedDate
+          ? `${API_URL}/songs?date=${selectedDate}`
+          : `${API_URL}/songs`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const json = await res.json();
         setSongs(json.data || []);
@@ -90,7 +111,7 @@ export default function SpotifyTopSongs() {
       }
     };
     fetchSongs();
-  }, []);
+  }, [selectedDate]);
 
   return (
     <div className="spotify-wrapper">
@@ -138,31 +159,49 @@ export default function SpotifyTopSongs() {
             <div className="spotify-section-text">
               <h2 className="spotify-section-title">
                 Most Streamed Songs
-                {lastUpdated && (
-                  <span className="section-title-date">
-                    {" On "}
-                    {lastUpdated.toLocaleDateString("en-US", {
+                <span className="section-title-date">
+                  {" On "}
+                  {availableDates.length > 1 ? (
+                    <select
+                      className="title-date-picker"
+                      value={selectedDate || ""}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                    >
+                      {availableDates.map((d) => (
+                        <option key={d} value={d}>
+                          {new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    lastUpdated && lastUpdated.toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
-                    })}
-                  </span>
-                )}
+                    })
+                  )}
+                </span>
               </h2>
               <p className="spotify-section-subtitle">Live Spotify Global Chart · Updated daily</p>
             </div>
-            <div className="spotify-search-wrapper">
-              <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <circle cx="11" cy="11" r="8" stroke="#a7a7a7" strokeWidth="2"/>
-                <path d="M21 21l-4.35-4.35" stroke="#a7a7a7" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <input
-                className="spotify-search"
-                type="text"
-                placeholder="Search songs or artists…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="spotify-section-controls">
+              <div className="spotify-search-wrapper">
+                <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="8" stroke="#a7a7a7" strokeWidth="2"/>
+                  <path d="M21 21l-4.35-4.35" stroke="#a7a7a7" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <input
+                  className="spotify-search"
+                  type="text"
+                  placeholder="Search songs or artists…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
